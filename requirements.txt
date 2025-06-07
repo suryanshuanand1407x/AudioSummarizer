@@ -1,0 +1,11 @@
+torch>=2.6.0
+transformers>=4.30.0
+datasets>=2.0.0
+openai-whisper
+soundfile
+torchaudio
+tqdm
+scikit-learn
+pandas
+numpy
+googletrans==4.0.0-rc1

@@ -1,0 +1,60 @@
+# summarizer.py
+
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+class Summarizer:
+    def __init__(self, model_name: str = "./models/summarizer/finetuned_bart"):
+        """
+        Loads a pretrained English summarization model (BART-large-CNN by default).
+        """
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(self.device)
+        self.model.eval()
+
+    def summarize(self, text: str, max_length: int = 150, min_length: int = 40) -> str:
+        """
+        Summarize the input text (assumed English).
+        """
+        if not text.strip():
+            return ""
+
+        # Tokenize and truncate to max 1024 tokens
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=1024
+        ).to(self.device)
+
+        # Generate summary IDs
+        with torch.no_grad():
+            summary_ids = self.model.generate(
+                inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                num_beams=4,
+                length_penalty=2.0,
+                max_length=max_length,
+                min_length=min_length,
+                no_repeat_ngram_size=3,
+                early_stopping=True,
+            )
+        summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        return summary
+
+
+# Singleton instance
+_summarizer = Summarizer()
+
+def summarize(text: str) -> str:
+    return _summarizer.summarize(text)
+
+
+if __name__ == "__main__":
+    example = (
+        "The quick brown fox jumped over the lazy dog. "
+        "In a village in northern India, an innovative project aims to transform waste management..."
+    )
+    print("Original:\n", example)
+    print("\nSummary:\n", summarize(example))
